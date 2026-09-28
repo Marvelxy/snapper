@@ -8,11 +8,12 @@ final class ToastWindow: FloatingPanel {
     private var dismissTask: Task<Void, Never>?
 
     func present(title: String, detail: String?, autoDismissAfter interval: TimeInterval = 3) {
+        let size = NSSize(width: 360, height: detail == nil ? 52 : 100)
         contentView = NSHostingView(
             rootView: ToastView(title: title, detail: detail)
         )
-        presentCentered(size: NSSize(width: 320, height: detail == nil ? 52 : 68))
-        setFrameOrigin(Self.bottomRightOrigin(for: NSSize(width: 320, height: detail == nil ? 52 : 68)))
+        presentCentered(size: size)
+        setFrameOrigin(Self.bottomRightOrigin(for: size))
         scheduleDismiss(after: interval)
     }
 
@@ -62,8 +63,7 @@ private struct ToastView: View {
                     Text(detail)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                        .lineLimit(4)
                 }
             }
 
@@ -71,7 +71,7 @@ private struct ToastView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .frame(width: 320)
+        .frame(width: 360)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
