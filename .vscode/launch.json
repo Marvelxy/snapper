@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:Snapper}",
+      "name": "Debug Snapper",
+      "target": "Snapper",
+      "configuration": "debug",
+      "preLaunchTask": "swift: Build Debug Snapper"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:Snapper}",
+      "name": "Release Snapper",
+      "target": "Snapper",
+      "configuration": "release",
+      "preLaunchTask": "swift: Build Release Snapper"
+    }
+  ]
+}
