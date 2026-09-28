@@ -76,14 +76,19 @@ jobs:
           pattern: Snapper-macOS-*
           merge-multiple: true
 
-      - name: Create GitHub release
+      # Idempotent: works whether the release was already created (e.g. via
+      # the web UI) or not. Re-running re-uploads the assets.
+      - name: Create or update GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: >
-          gh release create "${GITHUB_REF_NAME}"
-          Snapper-macOS-Apple-Silicon.zip
-          Snapper-macOS-Apple-Silicon.dmg
-          Snapper-macOS-Intel.zip
-          Snapper-macOS-Intel.dmg
-          --title "${GITHUB_REF_NAME}"
-          --generate-notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          fi
+          gh release upload "$TAG" \
+            Snapper-macOS-Apple-Silicon.zip \
+            Snapper-macOS-Apple-Silicon.dmg \
+            Snapper-macOS-Intel.zip \
+            Snapper-macOS-Intel.dmg \
+            --clobber
