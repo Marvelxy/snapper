@@ -18,5 +18,7 @@ final class WindowPickerWindow: FloatingPanel {
         )
 
         presentCentered(size: Self.contentSize)
+        // Borderless card: draggable so it never blocks the window you want.
+        isMovableByWindowBackground = true
     }
 }

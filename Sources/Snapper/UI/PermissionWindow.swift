@@ -23,6 +23,8 @@ final class PermissionWindow: FloatingPanel {
         )
 
         presentCentered(size: NSSize(width: 420, height: 250))
+        // Borderless card: let the user drag it aside while granting access.
+        isMovableByWindowBackground = true
     }
 
     override func close() {

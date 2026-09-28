@@ -62,7 +62,8 @@ enum ScreenCapturer {
         }
     }
 
-    /// Captures an entire display at native resolution (capped at `maxPixelDimension`).
+    /// Captures an entire display at full backing-store resolution
+    /// (capped at `maxPixelDimension`).
     static func captureDisplay(
         _ display: SCDisplay,
         excludingWindows excludedWindows: [SCWindow] = []
@@ -74,11 +75,24 @@ enum ScreenCapturer {
             throw ScreenCaptureError.displayNotFound
         }
 
-        let scale = min(1, CGFloat(maxPixelDimension) / CGFloat(max(display.width, display.height)))
+        // Request full backing-store resolution as a floor: if the display
+        // buffer reports fewer pixels than the screen's backing store (scaled
+        // modes report points), capturing at the buffer size would upscale
+        // and blur. Never request fewer pixels than the buffer offers.
+        let backing = max(screen.backingScaleFactor, 1)
+        let rawWidth = max(
+            CGFloat(display.width),
+            (screen.frame.width * backing).rounded()
+        )
+        let rawHeight = max(
+            CGFloat(display.height),
+            (screen.frame.height * backing).rounded()
+        )
+        let scale = min(1, CGFloat(maxPixelDimension) / max(rawWidth, rawHeight))
 
         let configuration = SCStreamConfiguration()
-        configuration.width = Int((CGFloat(display.width) * scale).rounded())
-        configuration.height = Int((CGFloat(display.height) * scale).rounded())
+        configuration.width = Int((rawWidth * scale).rounded())
+        configuration.height = Int((rawHeight * scale).rounded())
         configuration.showsCursor = false
         configuration.scalesToFit = false
         configuration.pixelFormat = kCVPixelFormatType_32BGRA

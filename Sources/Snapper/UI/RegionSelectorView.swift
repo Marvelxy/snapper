@@ -225,8 +225,9 @@ struct RegionSelectorView: View {
             Int((rect.height * session.pixelScale).rounded())
         )
 
-        // Snapper pins the size readout to the selection's bottom edge.
-        let y = rect.maxY + 22 <= size.height - 12 ? rect.maxY + 13 : rect.maxY - 13
+        // Snapper pins the size readout above the selection's top edge,
+        // falling back inside when there is no room.
+        let y = rect.minY - 22 >= 12 ? rect.minY - 13 : rect.minY + 13
         let x = min(max(rect.midX, 60), size.width - 60)
 
         return Text(label)

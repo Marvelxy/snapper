@@ -36,6 +36,14 @@ enum DiagnosticReport {
                 "target display",
                 "id=\(display.displayID) \(Int(display.frame.width))x\(Int(display.frame.height))pt \(display.width)x\(display.height)px"
             )
+            if let screen = ScreenCapturer.screen(for: display.displayID) {
+                let backing = max(screen.backingScaleFactor, 1)
+                printLine("backing scale", String(format: "%.2f", backing))
+                printLine(
+                    "backing pixels",
+                    "\(Int((screen.frame.width * backing).rounded()))x\(Int((screen.frame.height * backing).rounded()))px"
+                )
+            }
 
             // Window capture uses a different SCContentFilter constructor, so it
             // gets its own end-to-end check.
