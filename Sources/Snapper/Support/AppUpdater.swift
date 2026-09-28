@@ -5,7 +5,7 @@ import Foundation
 /// no auto-install — just notifies and opens the release page.
 enum AppUpdater {
     private static let latestURL = URL(
-        string: "https://api.github.com/Marvelxy/snapper/releases/latest"
+        string: "https://api.github.com/repos/Marvelxy/snapper/releases/latest"
     )!
 
     private struct Release: Decodable {
