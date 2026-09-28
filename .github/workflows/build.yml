@@ -70,6 +70,9 @@ jobs:
     needs: build
     runs-on: macos-14
     steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
