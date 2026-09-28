@@ -165,161 +165,166 @@ struct SnapperAnnotation: Identifiable, Equatable {
 
 // MARK: - Export renderer
 
-/// Bakes annotations onto a cropped capture. Coordinates arrive in
-/// selection-local points (top-left origin) and are scaled to pixels.
+/// Bakes annotations onto a cropped capture using only AppKit drawing
+/// primitives — the same path the overlay uses to display the screenshot —
+/// so the file matches the screen exactly: the photo is copied with
+/// interpolation disabled (no resampling softness, no flips) and vectors are
+/// drawn in matching coordinates. Geometry arrives in selection-local points
+/// (top-left origin); `scale` maps points onto pixels.
 enum SnapperRenderer {
+    @MainActor
     static func composite(
         base: CGImage,
         annotations: [SnapperAnnotation],
         scale: CGFloat
     ) -> CGImage? {
         guard !annotations.isEmpty else { return base }
-        let width = base.width
-        let height = base.height
-        guard width > 0, height > 0 else { return base }
+        let pixelWidth = base.width
+        let pixelHeight = base.height
+        guard pixelWidth > 0, pixelHeight > 0 else { return base }
 
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
+        // 1 unit = 1 pixel, AppKit bottom-left origin.
+        let canvasSize = NSSize(width: pixelWidth, height: pixelHeight)
+        let canvas = NSImage(size: canvasSize)
+        canvas.lockFocus()
 
-        // Work in top-left origin space so annotation geometry maps 1:1.
-        context.translateBy(x: 0, y: CGFloat(height))
-        context.scaleBy(x: 1, y: -1)
-        context.draw(base, in: CGRect(x: 0, y: 0, width: width, height: height))
-        context.setLineCap(.round)
-        context.setLineJoin(.round)
+        // Pixel-identical copy of the photo: no interpolation, no resampling.
+        NSGraphicsContext.current?.imageInterpolation = .none
+        NSImage(cgImage: base, size: canvasSize)
+            .draw(in: NSRect(origin: .zero, size: canvasSize))
+        NSGraphicsContext.current?.imageInterpolation = .default
 
+        let canvasHeight = CGFloat(pixelHeight)
         for annotation in annotations {
-            draw(
-                annotation,
-                in: context,
-                imageSize: CGSize(width: width, height: height),
-                scale: scale,
-                originalBase: base
-            )
+            draw(annotation, base: base, canvasHeight: canvasHeight, scale: scale)
         }
+        canvas.unlockFocus()
 
-        return context.makeImage()
+        // Re-render through AppKit so orientation matches what was drawn.
+        guard let tiff = canvas.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let output = rep.cgImage else { return nil }
+        return output
     }
 
     private static func draw(
         _ annotation: SnapperAnnotation,
-        in context: CGContext,
-        imageSize: CGSize,
-        scale: CGFloat,
-        originalBase: CGImage
+        base: CGImage,
+        canvasHeight: CGFloat,
+        scale: CGFloat
     ) {
-        let px = { (value: CGFloat) in value * scale }
         let color = NSColor(hex: annotation.hex)
-        let lineWidth = max(1, px(annotation.width))
+        let lineWidth = max(1, annotation.width * scale)
+
+        func point(_ p: CGPoint) -> NSPoint {
+            NSPoint(x: p.x * scale, y: canvasHeight - p.y * scale)
+        }
+        func rect(_ r: CGRect) -> NSRect {
+            NSRect(
+                x: r.minX * scale,
+                y: canvasHeight - r.maxY * scale,
+                width: r.width * scale,
+                height: r.height * scale
+            )
+        }
+        func stroke(_ path: NSBezierPath) {
+            path.lineWidth = lineWidth
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            path.stroke()
+        }
 
         switch annotation.kind {
         case .stroke(let points, let opacity):
-            guard points.count >= 1 else { return }
-            context.setStrokeColor(color.withAlphaComponent(CGFloat(opacity)).cgColor)
-            context.setLineWidth(lineWidth)
-            context.beginPath()
+            guard let first = points.first else { return }
+            color.withAlphaComponent(opacity).setStroke()
+            let path = NSBezierPath()
+            let start = point(first)
+            path.move(to: start)
             if points.count == 1 {
-                let p = scaled(points[0], by: scale)
-                context.move(to: p)
-                context.addLine(to: CGPoint(x: p.x + 0.5, y: p.y + 0.5))
+                path.line(to: NSPoint(x: start.x + 0.5, y: start.y))
             } else {
-                context.move(to: scaled(points[0], by: scale))
-                for point in points.dropFirst() {
-                    context.addLine(to: scaled(point, by: scale))
+                for p in points.dropFirst() {
+                    path.line(to: point(p))
                 }
             }
-            context.strokePath()
+            stroke(path)
 
         case .line(let from, let to):
-            context.setStrokeColor(color.cgColor)
-            context.setLineWidth(lineWidth)
-            context.beginPath()
-            context.move(to: scaled(from, by: scale))
-            context.addLine(to: scaled(to, by: scale))
-            context.strokePath()
+            color.setStroke()
+            let path = NSBezierPath()
+            path.move(to: point(from))
+            path.line(to: point(to))
+            stroke(path)
 
         case .arrow(let from, let to):
-            let a = scaled(from, by: scale)
-            let b = scaled(to, by: scale)
-            context.setStrokeColor(color.cgColor)
-            context.setFillColor(color.cgColor)
-            context.setLineWidth(lineWidth)
-            context.beginPath()
-            context.move(to: a)
-            context.addLine(to: b)
-            context.strokePath()
+            let a = point(from)
+            let b = point(to)
+            color.setStroke()
+            let shaft = NSBezierPath()
+            shaft.move(to: a)
+            shaft.line(to: b)
+            stroke(shaft)
 
-            let direction = CGPoint(x: b.x - a.x, y: b.y - a.y)
+            let direction = NSPoint(x: b.x - a.x, y: b.y - a.y)
             let length = hypot(direction.x, direction.y)
             guard length > 4 else { return }
-            let unit = CGPoint(x: direction.x / length, y: direction.y / length)
-            let headLength = max(10 * scale, lineWidth * 3)
-            let angle: CGFloat = .pi / 7
-            let left = CGPoint(
-                x: b.x - headLength * (unit.x * cos(angle) - unit.y * sin(angle)),
-                y: b.y - headLength * (unit.x * sin(angle) + unit.y * cos(angle))
-            )
-            let right = CGPoint(
-                x: b.x - headLength * (unit.x * cos(angle) + unit.y * sin(angle)),
-                y: b.y - headLength * (-unit.x * sin(angle) + unit.y * cos(angle))
-            )
-            context.beginPath()
-            context.move(to: b)
-            context.addLine(to: left)
-            context.addLine(to: right)
-            context.closePath()
-            context.fillPath()
+            let unit = NSPoint(x: direction.x / length, y: direction.y / length)
+            let normal = NSPoint(x: -unit.y, y: unit.x)
+            let half = max(1.5, lineWidth / 2)
+            let headLength = max(12, lineWidth * 3)
+            let headHalf = max(6, lineWidth * 2)
+            let neck = NSPoint(x: b.x - unit.x * headLength, y: b.y - unit.y * headLength)
 
-        case .rectangle(let rect):
-            context.setStrokeColor(color.cgColor)
-            context.setLineWidth(lineWidth)
-            context.stroke(scaled(rect, by: scale))
+            let head = NSBezierPath()
+            head.move(to: NSPoint(x: a.x + normal.x * half, y: a.y + normal.y * half))
+            head.line(to: NSPoint(x: neck.x + normal.x * half, y: neck.y + normal.y * half))
+            head.line(to: NSPoint(x: neck.x + normal.x * headHalf, y: neck.y + normal.y * headHalf))
+            head.line(to: b)
+            head.line(to: NSPoint(x: neck.x - normal.x * headHalf, y: neck.y - normal.y * headHalf))
+            head.line(to: NSPoint(x: neck.x - normal.x * half, y: neck.y - normal.y * half))
+            head.line(to: NSPoint(x: a.x - normal.x * half, y: a.y - normal.y * half))
+            head.close()
+            color.setFill()
+            head.fill()
 
-        case .ellipse(let rect):
-            context.setStrokeColor(color.cgColor)
-            context.setLineWidth(lineWidth)
-            context.beginPath()
-            context.addEllipse(in: scaled(rect, by: scale))
-            context.strokePath()
+        case .rectangle(let r):
+            color.setStroke()
+            stroke(NSBezierPath(rect: rect(r)))
 
-        case .pixelate(let rect):
+        case .ellipse(let r):
+            color.setStroke()
+            stroke(NSBezierPath(ovalIn: rect(r)))
+
+        case .pixelate(let r):
             // Crop from the original capture (top-left origin, same convention
             // as ImageUtilities.cropped) so the region lines up exactly.
-            guard let pixellated = pixellated(base: originalBase, rect: scaled(rect, by: scale)) else { return }
-            context.saveGState()
-            context.clip(to: scaled(rect, by: scale))
-            context.draw(pixellated, in: scaled(rect, by: scale))
-            context.restoreGState()
+            let pixelRect = scaled(r, by: scale)
+            guard let pixellated = pixellated(base: base, rect: pixelRect) else { return }
+            NSImage(
+                cgImage: pixellated,
+                size: NSSize(width: pixelRect.width, height: pixelRect.height)
+            ).draw(in: rect(r))
 
         case .text(let position, let string, let fontSize):
-            guard !string.isEmpty else { return }
+            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
             let attributes: [NSAttributedString.Key: Any] = [
-                .font: NSFont.systemFont(ofSize: px(fontSize), weight: .semibold),
+                .font: NSFont.systemFont(ofSize: fontSize * scale, weight: .semibold),
                 .foregroundColor: color
             ]
-            let attributed = NSAttributedString(string: string, attributes: attributes)
-            let textSize = attributed.size()
-            let size = NSSize(width: ceil(textSize.width) + 8, height: ceil(textSize.height) + 8)
-            let raster = NSImage(size: size)
-            raster.lockFocus()
-            NSColor.clear.set()
-            NSRect(origin: .zero, size: size).fill()
-            attributed.draw(at: NSPoint(x: 4, y: 4))
-            raster.unlockFocus()
-            guard let textImage = raster.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
-            let origin = scaled(position, by: scale)
-            context.draw(textImage, in: CGRect(origin: origin, size: size))
+            let text = NSAttributedString(string: trimmed, attributes: attributes)
+            let textSize = text.size()
+            let anchor = point(position)
+            // draw(in:) lays out from the rect's top in any context, matching
+            // the top-left anchored preview.
+            text.draw(in: NSRect(
+                x: anchor.x,
+                y: anchor.y - ceil(textSize.height),
+                width: ceil(textSize.width),
+                height: ceil(textSize.height)
+            ))
         }
-
-        // Silence unused warning for imageSize when no branch needs it.
-        _ = imageSize
     }
 
     private static func scaled(_ point: CGPoint, by scale: CGFloat) -> CGPoint {
