@@ -36,7 +36,7 @@ private struct AboutView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Text("Flameshot-style screenshots for macOS.")
+            Text("Fast screenshots with built-in annotations.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
 

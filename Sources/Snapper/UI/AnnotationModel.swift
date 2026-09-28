@@ -5,8 +5,8 @@ import SwiftUI
 
 // MARK: - Tools
 
-/// Flameshot's toolbar toolset, in toolbar order.
-enum FlameshotTool: String, CaseIterable, Identifiable {
+/// Snapper's toolbar toolset, in toolbar order.
+enum SnapperTool: String, CaseIterable, Identifiable {
     case selection
     case pencil
     case line
@@ -33,7 +33,7 @@ enum FlameshotTool: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Flameshot single-key shortcut for each tool.
+    /// Snapper single-key shortcut for each tool.
     var hotkey: String {
         switch self {
         case .selection: return "S"
@@ -65,8 +65,8 @@ enum FlameshotTool: String, CaseIterable, Identifiable {
 
 // MARK: - Color / thickness
 
-/// Flameshot's default draw-color choices.
-enum FlameshotSwatch: String, CaseIterable, Identifiable {
+/// Snapper's default draw-color choices.
+enum SnapperSwatch: String, CaseIterable, Identifiable {
     case red = "#FF0000"
     case orange = "#FF8000"
     case yellow = "#FFE400"
@@ -82,7 +82,7 @@ enum FlameshotSwatch: String, CaseIterable, Identifiable {
     var nsColor: NSColor { NSColor(hex: rawValue) }
 }
 
-enum FlameshotThickness: CGFloat, CaseIterable, Identifiable {
+enum SnapperThickness: CGFloat, CaseIterable, Identifiable {
     case thin = 2
     case medium = 4
     case thick = 8
@@ -139,7 +139,7 @@ extension NSColor {
 
 /// A single annotation stroke. All geometry is in selection-local points with a
 /// top-left origin (SwiftUI space), scaled by `pixelScale` at export time.
-struct FlameshotAnnotation: Identifiable, Equatable {
+struct SnapperAnnotation: Identifiable, Equatable {
     enum Kind: Equatable {
         case stroke(points: [CGPoint], opacity: Double)
         case line(from: CGPoint, to: CGPoint)
@@ -167,10 +167,10 @@ struct FlameshotAnnotation: Identifiable, Equatable {
 
 /// Bakes annotations onto a cropped capture. Coordinates arrive in
 /// selection-local points (top-left origin) and are scaled to pixels.
-enum FlameshotRenderer {
+enum SnapperRenderer {
     static func composite(
         base: CGImage,
-        annotations: [FlameshotAnnotation],
+        annotations: [SnapperAnnotation],
         scale: CGFloat
     ) -> CGImage? {
         guard !annotations.isEmpty else { return base }
@@ -209,7 +209,7 @@ enum FlameshotRenderer {
     }
 
     private static func draw(
-        _ annotation: FlameshotAnnotation,
+        _ annotation: SnapperAnnotation,
         in context: CGContext,
         imageSize: CGSize,
         scale: CGFloat,

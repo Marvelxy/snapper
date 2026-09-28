@@ -74,7 +74,7 @@ final class StatusBarController {
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
 
-        // Flameshot's primary entry point: one GUI for select + annotate.
+        // Snapper's primary entry point: one GUI for select + annotate.
         menu.addItem(captureItem("Take Screenshot", action: .gui))
 
         menu.addItem(.separator())

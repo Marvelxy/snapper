@@ -146,13 +146,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    /// Flameshot's commit: crop the selection, bake annotations in, then copy
+    /// Snapper's commit: crop the selection, bake annotations in, then copy
     /// and/or save like the toolbar action asked — no intermediate preview.
     private func finishEditorSelection(
         _ rect: CGRect,
-        annotations: [FlameshotAnnotation],
+        annotations: [SnapperAnnotation],
         snapshot: DisplaySnapshot,
-        action: FlameshotCommitAction
+        action: SnapperCommitAction
     ) {
         let pixelRect = CGRect(
             x: rect.minX * snapshot.pixelScale,
@@ -168,7 +168,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if !annotations.isEmpty {
-            guard let composited = FlameshotRenderer.composite(
+            guard let composited = SnapperRenderer.composite(
                 base: cropped,
                 annotations: annotations,
                 scale: snapshot.pixelScale

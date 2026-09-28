@@ -2,22 +2,22 @@ import AppKit
 import SwiftUI
 
 /// Where the capture should go once the selection is accepted.
-enum FlameshotCommitAction {
+enum SnapperCommitAction {
     case copy
     case save
 }
 
-/// Resize handles around the selection, in flameshot's 8-handle layout.
-enum FlameshotHandle: CaseIterable {
+/// Resize handles around the selection, in an 8-handle layout.
+enum SnapperHandle: CaseIterable {
     case topLeft, top, topRight, right, bottomRight, bottom, bottomLeft, left
 }
 
-/// Owns all editor state for one flameshot-style capture session: the
+/// Owns all editor state for one capture session: the
 /// selection rectangle, in-progress gestures, annotations with undo/redo, the
 /// active tool, color and thickness. Coordinates are view points with a
 /// top-left origin; the overlay maps them onto capture pixels at commit time.
 @MainActor
-final class FlameshotSession: ObservableObject {
+final class SnapperSession: ObservableObject {
     // MARK: - Canvas
 
     /// Full-canvas size in points (matches the captured image's point size).
@@ -34,7 +34,7 @@ final class FlameshotSession: ObservableObject {
         case none
         case newSelection(anchor: CGPoint)
         case move(anchor: CGPoint, original: CGRect)
-        case resize(handle: FlameshotHandle, original: CGRect)
+        case resize(handle: SnapperHandle, original: CGRect)
         case drawShape(kind: ShapeKind, anchor: CGPoint, current: CGPoint)
         case stroke(points: [CGPoint])
         case pixelate(anchor: CGPoint, current: CGRect)
@@ -57,15 +57,15 @@ final class FlameshotSession: ObservableObject {
 
     // MARK: - Tools & style
 
-    @Published var activeTool: FlameshotTool = .selection
-    @Published var swatch: FlameshotSwatch = .red
-    @Published var thickness: FlameshotThickness = .medium
+    @Published var activeTool: SnapperTool = .selection
+    @Published var swatch: SnapperSwatch = .red
+    @Published var thickness: SnapperThickness = .medium
     @Published var showSidePanel = false
 
     // MARK: - Annotations
 
-    @Published private(set) var annotations: [FlameshotAnnotation] = []
-    @Published private(set) var redoStack: [FlameshotAnnotation] = []
+    @Published private(set) var annotations: [SnapperAnnotation] = []
+    @Published private(set) var redoStack: [SnapperAnnotation] = []
     var canUndo: Bool { !annotations.isEmpty }
     var canRedo: Bool { !redoStack.isEmpty }
 
@@ -83,7 +83,7 @@ final class FlameshotSession: ObservableObject {
 
     /// Called with the selection (view coords), annotations
     /// (selection-local coords) and the requested action.
-    var onAccept: ((CGRect, [FlameshotAnnotation], FlameshotCommitAction) -> Void)?
+    var onAccept: ((CGRect, [SnapperAnnotation], SnapperCommitAction) -> Void)?
     var onCancel: (() -> Void)?
 
     private let minimumSide: CGFloat = 5
@@ -173,7 +173,7 @@ final class FlameshotSession: ObservableObject {
     }
 
     private func pressWithSelectionTool(at point: CGPoint) {
-        // Like flameshot, the selection locks once annotations exist so
+        // The selection locks once annotations exist so
         // selection-local strokes keep lining up with the pixels beneath them.
         if isSelectionLocked { return }
         if let selection {
@@ -241,7 +241,7 @@ final class FlameshotSession: ObservableObject {
             liveStroke = []
         case .pixelate(_, let localRect):
             if localRect.width >= minimumSide, localRect.height >= minimumSide {
-                push(FlameshotAnnotation(kind: .pixelate(rect: localRect), hex: swatch.rawValue, width: thickness.rawValue))
+                push(SnapperAnnotation(kind: .pixelate(rect: localRect), hex: swatch.rawValue, width: thickness.rawValue))
             }
         }
         dragMode = .none
@@ -273,19 +273,19 @@ final class FlameshotSession: ObservableObject {
         }
         guard !tooSmall else { return }
 
-        let annotation: FlameshotAnnotation
+        let annotation: SnapperAnnotation
         switch kind {
         case .line:
-            annotation = FlameshotAnnotation(kind: .line(from: from, to: to), hex: swatch.rawValue, width: thickness.rawValue)
+            annotation = SnapperAnnotation(kind: .line(from: from, to: to), hex: swatch.rawValue, width: thickness.rawValue)
         case .arrow:
-            annotation = FlameshotAnnotation(kind: .arrow(from: from, to: to), hex: swatch.rawValue, width: thickness.rawValue)
+            annotation = SnapperAnnotation(kind: .arrow(from: from, to: to), hex: swatch.rawValue, width: thickness.rawValue)
         case .rectangle:
-            annotation = FlameshotAnnotation(
+            annotation = SnapperAnnotation(
                 kind: .rectangle(rect: Self.rectangle(from: from, to: to, clampedTo: nil)),
                 hex: swatch.rawValue, width: thickness.rawValue
             )
         case .ellipse:
-            annotation = FlameshotAnnotation(
+            annotation = SnapperAnnotation(
                 kind: .ellipse(rect: Self.rectangle(from: from, to: to, clampedTo: nil)),
                 hex: swatch.rawValue, width: thickness.rawValue
             )
@@ -297,13 +297,13 @@ final class FlameshotSession: ObservableObject {
         guard points.count >= 1 else { return }
         let isMarker = activeTool == .marker
         let width = isMarker ? thickness.rawValue * 3 : thickness.rawValue
-        let kind = FlameshotAnnotation.Kind.stroke(points: points, opacity: isMarker ? 0.4 : 1)
-        push(FlameshotAnnotation(kind: kind, hex: swatch.rawValue, width: width))
+        let kind = SnapperAnnotation.Kind.stroke(points: points, opacity: isMarker ? 0.4 : 1)
+        push(SnapperAnnotation(kind: kind, hex: swatch.rawValue, width: width))
     }
 
     // MARK: - Undo / redo
 
-    private func push(_ annotation: FlameshotAnnotation) {
+    private func push(_ annotation: SnapperAnnotation) {
         annotations.append(annotation)
         redoStack.removeAll()
     }
@@ -327,7 +327,7 @@ final class FlameshotSession: ObservableObject {
         pendingText = nil
         let trimmed = pending.string.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        push(FlameshotAnnotation(
+        push(SnapperAnnotation(
             kind: .text(position: pending.position, string: trimmed, fontSize: thickness.fontSize),
             hex: swatch.rawValue,
             width: thickness.rawValue
@@ -369,8 +369,8 @@ final class FlameshotSession: ObservableObject {
 
     // MARK: - Handles
 
-    func handle(at point: CGPoint, in rect: CGRect) -> FlameshotHandle? {
-        for handle in FlameshotHandle.allCases {
+    func handle(at point: CGPoint, in rect: CGRect) -> SnapperHandle? {
+        for handle in SnapperHandle.allCases {
             if hypot(point.x - handlePoint(handle, in: rect).x, point.y - handlePoint(handle, in: rect).y) <= handleRadius {
                 return handle
             }
@@ -378,7 +378,7 @@ final class FlameshotSession: ObservableObject {
         return nil
     }
 
-    func handlePoint(_ handle: FlameshotHandle, in rect: CGRect) -> CGPoint {
+    func handlePoint(_ handle: SnapperHandle, in rect: CGRect) -> CGPoint {
         switch handle {
         case .topLeft: return CGPoint(x: rect.minX, y: rect.minY)
         case .top: return CGPoint(x: rect.midX, y: rect.minY)
@@ -391,8 +391,8 @@ final class FlameshotSession: ObservableObject {
         }
     }
 
-    private func clampedResized(_ original: CGRect, handle: FlameshotHandle, to point: CGPoint) -> CGRect {
-        // Mirror flameshot defaults: Shift mirrors around the opposite edge,
+    private func clampedResized(_ original: CGRect, handle: SnapperHandle, to point: CGPoint) -> CGRect {
+        // Shift mirrors around the opposite edge,
         // Control preserves the aspect ratio.
         let flags = NSApp?.currentEvent?.modifierFlags ?? []
         let mirror = flags.contains(.shift)
@@ -431,7 +431,7 @@ final class FlameshotSession: ObservableObject {
         return clampToCanvas(rect)
     }
 
-    // MARK: - Keyboard (flameshot bindings)
+    // MARK: - Keyboard shortcuts
 
     /// Returns true when the event was consumed.
     func handleKey(_ event: NSEvent) -> Bool {
@@ -450,7 +450,7 @@ final class FlameshotSession: ObservableObject {
         case 53: // Escape
             onCancel?()
             return true
-        case 36: // Return: flameshot uploads; here it copies like double-click.
+        case 36: // Return copies, like double-click.
             commit(.copy)
             return true
         case 123, 124, 125, 126: // Arrow keys
@@ -500,14 +500,14 @@ final class FlameshotSession: ObservableObject {
         return false
     }
 
-    private func activateDrawing(_ tool: FlameshotTool) {
+    private func activateDrawing(_ tool: SnapperTool) {
         activeTool = tool
         showSidePanel = true
     }
 
     // MARK: - Commit
 
-    func commit(_ action: FlameshotCommitAction) {
+    func commit(_ action: SnapperCommitAction) {
         commitPendingText()
         guard let rect = selection,
               rect.width >= minimumSide, rect.height >= minimumSide else { return }
@@ -516,7 +516,7 @@ final class FlameshotSession: ObservableObject {
         onAccept?(rect, annotations, action)
     }
 
-    /// The selection locks once annotations exist, mirroring flameshot, so
+    /// The selection locks once annotations exist, so
     /// selection-local strokes keep lining up with the pixels beneath them.
     var isSelectionLocked: Bool { !annotations.isEmpty }
 

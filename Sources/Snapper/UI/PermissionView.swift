@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct PermissionView: View {
@@ -41,5 +42,12 @@ struct PermissionView: View {
         }
         .padding(18)
         .frame(width: 420)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
     }
 }

@@ -10,19 +10,19 @@ final class CrosshairHostingView<Content: View>: NSHostingView<Content> {
     }
 }
 
-/// Borderless full-display overlay hosting the flameshot-style capture editor.
+/// Borderless full-display overlay hosting the capture editor.
 /// Forwards every key event to the session, since a non-activating panel never
 /// gets the SwiftUI responder chain.
 final class RegionOverlayWindow: FloatingPanel {
     private var keyMonitor: Any?
-    private var session: FlameshotSession?
+    private var session: SnapperSession?
 
     func present(
         snapshot: DisplaySnapshot,
-        onAccept: @escaping (CGRect, [FlameshotAnnotation], FlameshotCommitAction) -> Void,
+        onAccept: @escaping (CGRect, [SnapperAnnotation], SnapperCommitAction) -> Void,
         onCancel: @escaping () -> Void
     ) {
-        let session = FlameshotSession(pixelScale: snapshot.pixelScale)
+        let session = SnapperSession(pixelScale: snapshot.pixelScale)
         self.session = session
         session.onAccept = { [weak self] rect, annotations, action in
             guard self != nil else { return }

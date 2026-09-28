@@ -1,14 +1,14 @@
 import SwiftUI
 
-/// Flameshot's dark attached toolbar: drawing tools, undo/redo and the final
-/// copy / save / exit actions. Styled after flameshot's charcoal bar with a
+/// Snapper's dark attached toolbar: drawing tools, undo/redo and the final
+/// copy / save / exit actions. Dark charcoal bar with a
 /// purple highlight for the active tool.
-struct FlameshotToolbarView: View {
-    @ObservedObject var session: FlameshotSession
+struct SnapperToolbarView: View {
+    @ObservedObject var session: SnapperSession
 
     var body: some View {
         HStack(spacing: 2) {
-            ForEach(FlameshotTool.allCases) { tool in
+            ForEach(SnapperTool.allCases) { tool in
                 toolButton(tool)
             }
 
@@ -22,7 +22,7 @@ struct FlameshotToolbarView: View {
                 Image(systemName: "arrow.uturn.backward")
                     .frame(width: 28, height: 28)
             }
-            .buttonStyle(FlameshotToolButtonStyle(isActive: false))
+            .buttonStyle(SnapperToolButtonStyle(isActive: false))
             .disabled(!session.canUndo)
             .opacity(session.canUndo ? 1 : 0.35)
             .help("Undo (Ctrl+Z)")
@@ -33,7 +33,7 @@ struct FlameshotToolbarView: View {
                 Image(systemName: "arrow.uturn.forward")
                     .frame(width: 28, height: 28)
             }
-            .buttonStyle(FlameshotToolButtonStyle(isActive: false))
+            .buttonStyle(SnapperToolButtonStyle(isActive: false))
             .disabled(!session.canRedo)
             .opacity(session.canRedo ? 1 : 0.35)
             .help("Redo (Ctrl+Shift+Z)")
@@ -48,7 +48,7 @@ struct FlameshotToolbarView: View {
                 Image(systemName: "doc.on.doc")
                     .frame(width: 28, height: 28)
             }
-            .buttonStyle(FlameshotToolButtonStyle(isActive: false))
+            .buttonStyle(SnapperToolButtonStyle(isActive: false))
             .help("Copy (Ctrl+C)")
 
             Button {
@@ -57,7 +57,7 @@ struct FlameshotToolbarView: View {
                 Image(systemName: "square.and.arrow.down")
                     .frame(width: 28, height: 28)
             }
-            .buttonStyle(FlameshotToolButtonStyle(isActive: false))
+            .buttonStyle(SnapperToolButtonStyle(isActive: false))
             .help("Save (Ctrl+S)")
 
             Button {
@@ -66,7 +66,7 @@ struct FlameshotToolbarView: View {
                 Image(systemName: "xmark")
                     .frame(width: 28, height: 28)
             }
-            .buttonStyle(FlameshotToolButtonStyle(isActive: false))
+            .buttonStyle(SnapperToolButtonStyle(isActive: false))
             .help("Exit (Esc)")
         }
         .padding(.horizontal, 6)
@@ -80,7 +80,7 @@ struct FlameshotToolbarView: View {
         .shadow(color: .black.opacity(0.5), radius: 10, y: 4)
     }
 
-    private func toolButton(_ tool: FlameshotTool) -> some View {
+    private func toolButton(_ tool: SnapperTool) -> some View {
         Button {
             session.activeTool = tool
             if tool != .selection {
@@ -90,12 +90,12 @@ struct FlameshotToolbarView: View {
             Image(systemName: tool.symbolName)
                 .frame(width: 28, height: 28)
         }
-        .buttonStyle(FlameshotToolButtonStyle(isActive: session.activeTool == tool))
+        .buttonStyle(SnapperToolButtonStyle(isActive: session.activeTool == tool))
         .help(tool.help)
     }
 }
 
-struct FlameshotToolButtonStyle: ButtonStyle {
+struct SnapperToolButtonStyle: ButtonStyle {
     var isActive: Bool
 
     func makeBody(configuration: Configuration) -> some View {
@@ -115,14 +115,14 @@ struct FlameshotToolButtonStyle: ButtonStyle {
 
 /// Color + thickness panel: a vertical strip in the same card style as the
 /// toolbar, docked to the left side of the selection. Toggled with Space,
-/// like flameshot's toggle-panel shortcut.
-struct FlameshotSidePanelView: View {
-    @ObservedObject var session: FlameshotSession
+/// drawing tool. Toggled with Space.
+struct SnapperSidePanelView: View {
+    @ObservedObject var session: SnapperSession
 
     var body: some View {
         VStack(spacing: 8) {
             VStack(spacing: 6) {
-                ForEach(FlameshotSwatch.allCases) { swatch in
+                ForEach(SnapperSwatch.allCases) { swatch in
                     Button {
                         session.swatch = swatch
                     } label: {
@@ -145,7 +145,7 @@ struct FlameshotSidePanelView: View {
             Divider()
 
             VStack(spacing: 4) {
-                ForEach(FlameshotThickness.allCases) { thickness in
+                ForEach(SnapperThickness.allCases) { thickness in
                     Button {
                         session.thickness = thickness
                     } label: {

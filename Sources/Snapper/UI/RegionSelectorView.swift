@@ -1,13 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// Flameshot-style capture editor: dimmed canvas, crosshair + magnifier while
+/// Snapper-style capture editor: dimmed canvas, crosshair + magnifier while
 /// selecting, a persistent 8-handle selection, in-place annotations and an
 /// attached toolbar. Fills its host window exactly so selection rectangles in
 /// top-left SwiftUI points map onto capture pixels by a single scale factor.
 struct RegionSelectorView: View {
     let image: NSImage
-    @ObservedObject var session: FlameshotSession
+    @ObservedObject var session: SnapperSession
     @FocusState private var textFieldFocused: Bool
 
     var body: some View {
@@ -45,7 +45,7 @@ struct RegionSelectorView: View {
 
     /// The capture sits behind every overlay, so toolbar buttons and the text
     /// field stay clickable while everywhere else starts selections, moves,
-    /// resizes and strokes. Double-click commits, like flameshot.
+    /// resizes and strokes. Double-click commits.
     private func canvasBackground(size: CGSize) -> some View {
         Image(nsImage: image)
             .resizable()
@@ -114,7 +114,7 @@ struct RegionSelectorView: View {
 
     private func creatingChrome(in size: CGSize) -> some View {
         ZStack {
-            // Flameshot's full-screen crosshair lines follow the pointer.
+            // Snapper's full-screen crosshair lines follow the pointer.
             if session.isHovering {
                 Path { path in
                     path.move(to: CGPoint(x: session.cursor.x, y: 0))
@@ -148,7 +148,7 @@ struct RegionSelectorView: View {
         .allowsHitTesting(false)
     }
 
-    /// Flameshot's loupe: a zoomed view of the pixels under the cursor.
+    /// Snapper's loupe: a zoomed view of the pixels under the cursor.
     private func magnifier(in size: CGSize) -> some View {
         let diameter: CGFloat = 120
         let radius = diameter / 2
@@ -200,7 +200,7 @@ struct RegionSelectorView: View {
                 .offset(x: rect.minX, y: rect.minY)
                 .shadow(color: .black.opacity(0.5), radius: 1)
 
-            ForEach(FlameshotHandle.allCases, id: \.self) { handle in
+            ForEach(SnapperHandle.allCases, id: \.self) { handle in
                 let center = session.handlePoint(handle, in: rect)
                 Rectangle()
                     .fill(.white)
@@ -225,7 +225,7 @@ struct RegionSelectorView: View {
             Int((rect.height * session.pixelScale).rounded())
         )
 
-        // Flameshot pins the size readout to the selection's bottom edge.
+        // Snapper pins the size readout to the selection's bottom edge.
         let y = rect.maxY + 22 <= size.height - 12 ? rect.maxY + 13 : rect.maxY - 13
         let x = min(max(rect.midX, 60), size.width - 60)
 
@@ -279,7 +279,7 @@ struct RegionSelectorView: View {
             alignment: .topLeading
         )
         .allowsHitTesting(false)
-        // Like flameshot, nothing drawn can spill outside the selection.
+        // Nothing drawn can spill outside the selection.
         .clipShape(SelectionClip(rect: selection))
     }
 
@@ -287,7 +287,7 @@ struct RegionSelectorView: View {
         session.activeTool == .marker ? session.thickness.rawValue * 3 : session.thickness.rawValue
     }
 
-    private func annotationView(_ annotation: FlameshotAnnotation, offset: CGPoint) -> some View {
+    private func annotationView(_ annotation: SnapperAnnotation, offset: CGPoint) -> some View {
         let color = Color(hex: annotation.hex)
         switch annotation.kind {
         case .stroke(let points, let opacity):
@@ -349,7 +349,7 @@ struct RegionSelectorView: View {
         }
     }
 
-    private func shapePreview(_ preview: FlameshotSession.DrawPreview) -> some View {
+    private func shapePreview(_ preview: SnapperSession.DrawPreview) -> some View {
         let color = session.swatch.color
         let width = session.thickness.rawValue
         switch preview.kind {
@@ -364,7 +364,7 @@ struct RegionSelectorView: View {
         case .arrow:
             return AnyView(arrowPath(from: preview.from, to: preview.to, width: width).fill(color))
         case .rectangle:
-            let rect = FlameshotSession.rectangle(from: preview.from, to: preview.to, clampedTo: nil)
+            let rect = SnapperSession.rectangle(from: preview.from, to: preview.to, clampedTo: nil)
             return AnyView(
                 Rectangle()
                     .strokeBorder(color, lineWidth: width)
@@ -372,7 +372,7 @@ struct RegionSelectorView: View {
                     .offset(x: rect.minX, y: rect.minY)
             )
         case .ellipse:
-            let rect = FlameshotSession.rectangle(from: preview.from, to: preview.to, clampedTo: nil)
+            let rect = SnapperSession.rectangle(from: preview.from, to: preview.to, clampedTo: nil)
             return AnyView(
                 Ellipse()
                     .strokeBorder(color, lineWidth: width)
@@ -465,14 +465,14 @@ struct RegionSelectorView: View {
         )
     }
 
-    private func binding(for pending: FlameshotSession.PendingText) -> Binding<String> {
+    private func binding(for pending: SnapperSession.PendingText) -> Binding<String> {
         Binding(
             get: { session.pendingText?.string ?? "" },
             set: { session.pendingText?.string = $0 }
         )
     }
 
-    /// Flameshot docks the toolbar under the selection, flipping above it when
+    /// Snapper docks the toolbar under the selection, flipping above it when
     /// there is no room.
     private func toolbarCluster(for selection: CGRect, in size: CGSize) -> some View {
         let toolbarSize = CGSize(width: 560, height: 40)
@@ -497,7 +497,7 @@ struct RegionSelectorView: View {
             size.width - toolbarSize.width / 2 - 8
         )
 
-        return FlameshotToolbarView(session: session)
+        return SnapperToolbarView(session: session)
             .position(x: centerX, y: centerY)
     }
 
@@ -526,7 +526,7 @@ struct RegionSelectorView: View {
             )
         }
 
-        return FlameshotSidePanelView(session: session)
+        return SnapperSidePanelView(session: session)
             .position(x: centerX, y: centerY)
     }
 }

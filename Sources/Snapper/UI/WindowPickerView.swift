@@ -25,6 +25,13 @@ struct WindowPickerView: View {
             footer
         }
         .frame(width: 360, height: 440)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
     }
 
     // MARK: - Pieces

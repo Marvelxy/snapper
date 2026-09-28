@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Flameshot-style desktop notification: a small card bottom-right confirming
+/// Snapper-style desktop notification: a small card bottom-right confirming
 /// what happened to the capture. Replaces the old preview window, since the
 /// editor already showed the result in place.
 final class ToastWindow: FloatingPanel {
