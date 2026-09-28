@@ -21,6 +21,16 @@ jobs:
       - name: Show toolchain
         run: swift --version
 
+      # The runner default Xcode ships Swift 5.10; the package needs Swift 6,
+      # so pick the newest installed Xcode.
+      - name: Select latest Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          LATEST=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "Using $LATEST"
+          sudo xcode-select -s "$LATEST/Contents/Developer"
+          swift --version
+
       # Builds both slices (arm64 + x86_64) and merges them into one
       # universal Snapper.app, exactly like a local `make app`.
       - name: Build universal app
