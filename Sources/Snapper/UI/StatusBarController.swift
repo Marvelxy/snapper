@@ -14,6 +14,7 @@ private final class MenuActionProxy: NSObject {
     var onOpenFolder: (() -> Void)?
     var onPermissionSettings: (() -> Void)?
     var onAbout: (() -> Void)?
+    var onCheckUpdates: (() -> Void)?
 
     @objc func handleCapture(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String,
@@ -33,6 +34,10 @@ private final class MenuActionProxy: NSObject {
     @objc func handleAbout() {
         onAbout?()
     }
+
+    @objc func handleCheckUpdates() {
+        onCheckUpdates?()
+    }
 }
 
 /// Owns the NSStatusItem and its menu. Snapper runs as an accessory app, so this
@@ -45,12 +50,14 @@ final class StatusBarController {
         onCapture: @escaping (CaptureAction) -> Void,
         onOpenFolder: @escaping () -> Void,
         onPermissionSettings: @escaping () -> Void,
-        onAbout: @escaping () -> Void
+        onAbout: @escaping () -> Void,
+        onCheckUpdates: @escaping () -> Void
     ) {
         proxy.onCapture = onCapture
         proxy.onOpenFolder = onOpenFolder
         proxy.onPermissionSettings = onPermissionSettings
         proxy.onAbout = onAbout
+        proxy.onCheckUpdates = onCheckUpdates
         install()
     }
 
@@ -99,6 +106,9 @@ final class StatusBarController {
 
         menu.addItem(
             plainItem("About Snapper", action: #selector(MenuActionProxy.handleAbout))
+        )
+        menu.addItem(
+            plainItem("Check for Updates…", action: #selector(MenuActionProxy.handleCheckUpdates))
         )
 
         menu.addItem(.separator())

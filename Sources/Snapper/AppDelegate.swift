@@ -34,6 +34,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             onAbout: { [weak self] in
                 self?.presentAbout()
+            },
+            onCheckUpdates: { [weak self] in
+                self?.checkForUpdates()
             }
         )
     }
@@ -282,6 +285,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.present { [weak self] in
             self?.aboutWindow?.close()
             self?.aboutWindow = nil
+        }
+    }
+
+    // MARK: - Updates
+
+    private var updateCheckTask: Task<Void, Never>?
+
+    private func checkForUpdates() {
+        guard updateCheckTask == nil else { return }
+
+        updateCheckTask = Task { [weak self] in
+            let result = await AppUpdater.check()
+            guard let self else { return }
+            self.updateCheckTask = nil
+
+            switch result {
+            case .upToDate(let version):
+                self.presentToast(title: "Snapper is up to date", detail: "Version \(version)")
+            case .available(let version, let url):
+                self.presentUpdateAlert(version: version, url: url)
+            case .noReleases:
+                self.presentToast(title: "No updates found", detail: "No releases published yet — check back later.")
+            case .failed(let error):
+                self.presentToast(title: "Couldn't check for updates", detail: error.localizedDescription)
+            }
+        }
+    }
+
+    private func presentUpdateAlert(version: String, url: URL) {
+        let alert = NSAlert()
+        alert.messageText = "Update available"
+        alert.informativeText =
+            "Snapper \(version) is available (you have \(AppUpdater.currentVersion)). Download it from GitHub to update."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Download")
+        alert.addButton(withTitle: "Later")
+
+        // Same activation dance as presentModally, but capturing the response.
+        let previousPolicy = NSApp.activationPolicy()
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        let response = alert.runModal()
+        NSApp.setActivationPolicy(previousPolicy)
+        NSApp.hide(nil)
+
+        if response == .alertFirstButtonReturn {
+            NSWorkspace.shared.open(url)
         }
     }
 
