@@ -46,11 +46,22 @@ jobs:
       - name: Zip app bundle
         run: ditto -c -k --keepParent build/Snapper.app Snapper-macOS-${{ matrix.label }}.zip
 
-      - name: Upload artifact
+      # DMG with drag-to-/Applications install experience.
+      - name: Build DMG
+        run: >
+          hdiutil create
+          -volname Snapper
+          -srcfolder build/Snapper.app
+          -ov -format UDZO
+          Snapper-macOS-${{ matrix.label }}.dmg
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Snapper-macOS-${{ matrix.label }}
-          path: Snapper-macOS-${{ matrix.label }}.zip
+          path: |
+            Snapper-macOS-${{ matrix.label }}.zip
+            Snapper-macOS-${{ matrix.label }}.dmg
 
   # When you push a tag like v1.0.0, attach both zips to a GitHub release so
   # people can download the build for their Mac without building from source.
@@ -71,6 +82,8 @@ jobs:
         run: >
           gh release create "${GITHUB_REF_NAME}"
           Snapper-macOS-Apple-Silicon.zip
+          Snapper-macOS-Apple-Silicon.dmg
           Snapper-macOS-Intel.zip
+          Snapper-macOS-Intel.dmg
           --title "${GITHUB_REF_NAME}"
           --generate-notes
