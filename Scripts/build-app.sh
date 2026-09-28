@@ -3,18 +3,23 @@
 # Builds Snapper as a universal (arm64 + x86_64) macOS app bundle.
 #
 # Usage:
-#   Scripts/build-app.sh [debug|release]
+#   Scripts/build-app.sh [debug|release] [arm64|x86_64]
 #
-# Each architecture is compiled in its own scratch directory and the two thin
-# binaries are merged with lipo. This avoids `swift build --arch a --arch b`,
-# which shells out to xcbuild and therefore needs a full Xcode install.
+# With no arch argument both slices are compiled and merged into one universal
+# binary. With an arch argument only that slice is built (used by CI to ship
+# separate Intel and Apple Silicon downloads).
 #
 set -euo pipefail
 
 CONFIGURATION="${1:-release}"
+ONLY_ARCH="${2:-}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="Snapper"
-ARCHS=(arm64 x86_64)
+if [[ -n "$ONLY_ARCH" ]]; then
+    ARCHS=("$ONLY_ARCH")
+else
+    ARCHS=(arm64 x86_64)
+fi
 
 X64_SCRATCH="$ROOT_DIR/.build-universal/x86_64"
 ARM_SCRATCH="$ROOT_DIR/.build-universal/arm64"
@@ -43,9 +48,14 @@ for ARCH in "${ARCHS[@]}"; do
     THIN_BINARIES+=("$BINARY")
 done
 
-echo "==> Merging slices with lipo"
 mkdir -p "$UNIVERSAL_DIR"
-lipo -create "${THIN_BINARIES[@]}" -output "$UNIVERSAL_BIN"
+if [[ "${#THIN_BINARIES[@]}" -eq 1 ]]; then
+    echo "==> Single-arch build (${ARCHS[0]}), skipping lipo"
+    cp "${THIN_BINARIES[0]}" "$UNIVERSAL_BIN"
+else
+    echo "==> Merging slices with lipo"
+    lipo -create "${THIN_BINARIES[@]}" -output "$UNIVERSAL_BIN"
+fi
 chmod +x "$UNIVERSAL_BIN"
 
 echo "==> Assembling $APP_BUNDLE"
