@@ -14,6 +14,8 @@ final class ToastWindow: FloatingPanel {
         )
         presentCentered(size: size)
         setFrameOrigin(Self.bottomRightOrigin(for: size))
+        // Borderless card: draggable, though it dismisses itself shortly.
+        isMovableByWindowBackground = true
         scheduleDismiss(after: interval)
     }
 

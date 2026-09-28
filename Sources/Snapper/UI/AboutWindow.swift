@@ -8,6 +8,8 @@ final class AboutWindow: FloatingPanel {
             rootView: AboutView(onClose: onClose)
         )
         presentCentered(size: NSSize(width: 360, height: 330))
+        // Borderless card: draggable.
+        isMovableByWindowBackground = true
     }
 }
 
