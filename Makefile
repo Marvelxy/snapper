@@ -1,4 +1,4 @@
-.PHONY: app run open clean install dmg
+.PHONY: app run open clean install dmg icon
 
 CONFIGURATION ?= release
 
@@ -25,6 +25,13 @@ install: app
 	rm -rf /Applications/Snapper.app
 	cp -R build/Snapper.app /Applications/Snapper.app
 	@echo "Installed /Applications/Snapper.app"
+
+## Re-render Resources/AppIcon.icns from Scripts/make-app-icon.swift
+## (the .icns is committed; run this only when the artwork changes)
+icon:
+	rm -rf build/AppIcon.iconset
+	swift Scripts/make-app-icon.swift build/AppIcon.iconset
+	iconutil -c icns -o Resources/AppIcon.icns build/AppIcon.iconset
 
 ## Package the built bundle into a DMG with the install window
 ## (background, app icon and Applications drop target)

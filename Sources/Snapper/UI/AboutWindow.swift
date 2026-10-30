@@ -25,9 +25,10 @@ private struct AboutView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: "camera.viewfinder")
-                .font(.system(size: 44, weight: .light))
-                .foregroundStyle(.tint)
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 64, height: 64)
                 .padding(.top, 18)
 
             VStack(spacing: 2) {
