@@ -2,6 +2,8 @@
 
 Fast screenshots with built-in annotations for macOS.
 
+![Snapper's editor with a selection and annotations](docs/screenshot.png)
+
 Snapper lives in your menu bar. Hit **Take Screenshot**, drag a region, annotate it
 in place (arrows, shapes, text, pixelate…), then copy or save — no intermediate
 windows, no friction.
