@@ -25,10 +25,17 @@ windows, no friction.
 
 ## Install
 
+Download the DMG for your Mac from [Releases](https://github.com/Marvelxy/snapper/releases),
+open it, and drag **Snapper** onto **Applications**. The disk image opens on a
+proper install screen with the app icon and an Applications drop target.
+
+Or build it yourself:
+
 ```sh
 git clone https://github.com/Marvelxy/snapper.git
 cd snapper
 make install   # builds and copies Snapper.app to /Applications
+make dmg       # or package build/Snapper-macOS.dmg with the install screen
 ```
 
 Launch Snapper from `/Applications` (or `make run` to build and launch from `./build`).

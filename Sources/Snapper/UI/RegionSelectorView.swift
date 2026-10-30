@@ -162,7 +162,7 @@ struct RegionSelectorView: View {
             y: min(max(offset.y, radius + 4), size.height - radius - 4)
         )
 
-        return ZStack {
+        return ZStack(alignment: .topLeading) {
             Image(nsImage: image)
                 .resizable()
                 .interpolation(.none)
@@ -172,19 +172,22 @@ struct RegionSelectorView: View {
                     x: radius - session.cursor.x * zoom,
                     y: radius - session.cursor.y * zoom
                 )
-                .frame(width: diameter, height: diameter)
-                .clipShape(Circle())
-                .overlay(Circle().strokeBorder(.white, lineWidth: 2))
-                .overlay(
-                    Path { path in
-                        path.move(to: CGPoint(x: radius - 8, y: radius))
-                        path.addLine(to: CGPoint(x: radius + 8, y: radius))
-                        path.move(to: CGPoint(x: radius, y: radius - 8))
-                        path.addLine(to: CGPoint(x: radius, y: radius + 8))
-                    }
-                    .stroke(Color.red.opacity(0.9), lineWidth: 1)
-                )
         }
+        // Pin the canvas-sized image to the loupe's top-leading corner. A
+        // centred frame would silently shift the zoomed content by half the
+        // display, so the loupe showed pixels away from the pointer.
+        .frame(width: diameter, height: diameter, alignment: .topLeading)
+        .clipShape(Circle())
+        .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+        .overlay(
+            Path { path in
+                path.move(to: CGPoint(x: radius - 8, y: radius))
+                path.addLine(to: CGPoint(x: radius + 8, y: radius))
+                path.move(to: CGPoint(x: radius, y: radius - 8))
+                path.addLine(to: CGPoint(x: radius, y: radius + 8))
+            }
+            .stroke(Color.red.opacity(0.9), lineWidth: 1)
+        )
         .position(x: clamped.x, y: clamped.y)
         .allowsHitTesting(false)
     }

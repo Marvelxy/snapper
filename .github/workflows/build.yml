@@ -9,11 +9,50 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # needed to create releases on tags
+  contents: write # needed to push the version tag and create releases
 
 jobs:
+  # Single source of truth for the version is the git tag. A pushed tag wins;
+  # a merge to main gets the next patch after the newest v* tag, so every merge
+  # ships a downloadable release. Pull requests build without a version.
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: resolve
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG="$GITHUB_REF_NAME"
+          elif [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
+            # Re-running the workflow for an already tagged commit keeps its
+            # version instead of burning a new one.
+            TAG=$(git tag --points-at HEAD --list 'v*' --sort=-v:refname | sed -n '1p')
+            if [[ -z "$TAG" ]]; then
+              LATEST=$(git tag --list 'v*' --sort=-v:refname | sed -n '1p')
+              if [[ -z "$LATEST" ]]; then
+                TAG="v0.1.0"
+              else
+                IFS=. read -r MAJOR MINOR PATCH <<< "${LATEST#v}"
+                TAG="v$MAJOR.$MINOR.$((PATCH + 1))"
+              fi
+            fi
+          else
+            TAG=""
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Version: ${TAG:-<none>}"
+
   # One installable app bundle per chip, built in parallel.
   build:
+    needs: version
     strategy:
       matrix:
         include:
@@ -39,12 +78,14 @@ jobs:
           sudo xcode-select -s "$LATEST/Contents/Developer"
           swift --version
 
-      # Single source of truth for the version is the git tag: v1.0.2 stamps
-      # 1.0.2 into the app About page. Non-tag builds keep Info.plist as-is.
+      # v1.0.2 stamps 1.0.2 into the app About page. Builds without a version
+      # (pull requests) keep Info.plist as-is.
       - name: Stamp version from tag
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: needs.version.outputs.tag != ''
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG#v}"
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" Resources/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${GITHUB_RUN_NUMBER}" Resources/Info.plist
           echo "Stamped version $VERSION (${GITHUB_RUN_NUMBER})"
@@ -53,14 +94,10 @@ jobs:
       - name: Build app (${{ matrix.arch }})
         run: Scripts/build-app.sh release ${{ matrix.arch }}
 
-      # DMG with drag-to-/Applications install experience.
+      # DMG with the real drag-to-/Applications install screen: branded
+      # background, app icon and Applications drop target.
       - name: Build DMG
-        run: >
-          hdiutil create
-          -volname Snapper
-          -srcfolder build/Snapper.app
-          -ov -format UDZO
-          Snapper-macOS-${{ matrix.label }}.dmg
+        run: Scripts/build-dmg.sh Snapper-macOS-${{ matrix.label }}.dmg
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -68,15 +105,18 @@ jobs:
           name: Snapper-macOS-${{ matrix.label }}
           path: Snapper-macOS-${{ matrix.label }}.dmg
 
-  # When you push a tag like v1.0.0, attach both zips to a GitHub release so
-  # people can download the build for their Mac without building from source.
+  # Publishes the run's version as a GitHub release: a merged PR on main gets
+  # its tag created here, while a pushed tag goes straight to the upload.
+  # Idempotent: re-runs update the existing release and re-upload the assets.
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
-    runs-on: macos-14
+    if: needs.version.outputs.tag != ''
+    needs: [version, build]
+    runs-on: ubuntu-latest
     steps:
       - name: Check out
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -84,13 +124,23 @@ jobs:
           pattern: Snapper-macOS-*
           merge-multiple: true
 
-      # Idempotent: works whether the release was already created (e.g. via
-      # the web UI) or not. Re-running re-uploads the assets.
+      - name: Tag the released commit
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists"
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Created tag $TAG"
+          fi
+
       - name: Create or update GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" --title "$TAG" --generate-notes
           fi
