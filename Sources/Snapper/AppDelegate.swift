@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var toastWindow: ToastWindow?
     private var permissionWindow: PermissionWindow?
     private var aboutWindow: AboutWindow?
+    private var updateWindow: UpdateWindow?
 
     /// The capture the user asked for before we knew whether permission was granted.
     private var pendingAction: CaptureAction?
@@ -303,8 +304,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             switch result {
             case .upToDate(let version):
                 self.presentToast(title: "Snapper is up to date", detail: "Version \(version)")
-            case .available(let version, let url):
-                self.presentUpdateAlert(version: version, url: url)
+            case .available(let version, let releaseURL, let download):
+                self.presentUpdate(version: version, releaseURL: releaseURL, download: download)
             case .noReleases:
                 self.presentToast(title: "No updates found", detail: "No releases published yet — check back later.")
             case .failed(let error):
@@ -313,25 +314,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func presentUpdateAlert(version: String, url: URL) {
-        let alert = NSAlert()
-        alert.messageText = "Update available"
-        alert.informativeText =
-            "Snapper \(version) is available (you have \(AppUpdater.currentVersion)). Download it from GitHub to update."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Download")
-        alert.addButton(withTitle: "Later")
+    private func presentUpdate(
+        version: String,
+        releaseURL: URL,
+        download: AppUpdater.Download?
+    ) {
+        updateWindow?.close()
 
-        // Same activation dance as presentModally, but capturing the response.
-        let previousPolicy = NSApp.activationPolicy()
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
-        let response = alert.runModal()
-        NSApp.setActivationPolicy(previousPolicy)
-        NSApp.hide(nil)
+        let window = UpdateWindow()
+        updateWindow = window
+        window.present(
+            version: version,
+            download: download,
+            releaseURL: releaseURL,
+            onClose: { [weak self] in
+                self?.updateWindow?.close()
+                self?.updateWindow = nil
+            },
+            onInstall: { [weak self] dmg in
+                self?.installUpdate(from: dmg)
+            }
+        )
+    }
 
-        if response == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(url)
+    private func installUpdate(from dmg: URL) {
+        do {
+            switch try UpdateInstaller.install(dmg: dmg) {
+            case .installing:
+                updateWindow?.close()
+                updateWindow = nil
+                // The helper waits for this process to exit, then swaps the
+                // bundle and reopens the new build.
+                NSApp.terminate(nil)
+            case .manualInstall:
+                updateWindow?.close()
+                updateWindow = nil
+                presentToast(
+                    title: "Drag Snapper onto Applications",
+                    detail: "This copy can't update itself in place."
+                )
+            }
+        } catch {
+            presentToast(title: "Couldn't install the update", detail: error.localizedDescription)
+            NSWorkspace.shared.open(dmg)
         }
     }
 

@@ -65,12 +65,14 @@ final class StatusBarController {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = item.button {
-            let image = NSImage(
-                systemSymbolName: "camera.viewfinder",
-                accessibilityDescription: "Snapper"
-            )
-            image?.isTemplate = true
-            button.image = image
+            if let image = NSApp.applicationIconImage {
+                image.size = NSSize(width: 18, height: 18)
+                button.image = image
+            } else {
+                let image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Snapper")
+                image?.isTemplate = true
+                button.image = image
+            }
             button.toolTip = "Snapper"
         }
 

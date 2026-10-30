@@ -63,6 +63,11 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
 
 cp "$ROOT_DIR/Resources/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
+if [[ ! -f "$ROOT_DIR/Resources/AppIcon.icns" ]]; then
+    echo "error: Resources/AppIcon.icns is missing (run: make icon)" >&2
+    exit 1
+fi
+cp "$ROOT_DIR/Resources/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
 cp "$UNIVERSAL_BIN" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 printf 'APPL????' > "$APP_BUNDLE/Contents/PkgInfo"
 chmod +x "$APP_BUNDLE/Contents/MacOS/$APP_NAME"

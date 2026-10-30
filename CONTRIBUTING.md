@@ -22,6 +22,7 @@ Requirements: macOS 14+, Swift 6 toolchain.
 | `make open` | Launch the already-built bundle **without rebuilding** |
 | `make install` | Build and copy to `/Applications/Snapper.app` |
 | `make dmg` | Build `build/Snapper-macOS.dmg` with the install window |
+| `make icon` | Re-render `Resources/AppIcon.icns` (already committed) |
 | `make run-raw` | Run the raw executable (capture won't work reliably — see below) |
 | `Snapper --diagnose` | Headless capture self-check for the exact binary |
 

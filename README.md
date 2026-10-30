@@ -18,6 +18,7 @@ windows, no friction.
 - Attached toolbar + color/thickness panel, crosshair, magnifier loupe, size readout
 - Copy to clipboard and auto-save to `~/Pictures/Snapper/` in one action
 - Full-screen and single-window capture shortcuts
+- In-app updates: downloads the new build, swaps it in and relaunches
 - Menu-bar app — no dock icon
 
 ## Requirements
