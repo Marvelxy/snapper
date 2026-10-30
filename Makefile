@@ -1,4 +1,4 @@
-.PHONY: app run open clean install
+.PHONY: app run open clean install dmg
 
 CONFIGURATION ?= release
 
@@ -25,6 +25,11 @@ install: app
 	rm -rf /Applications/Snapper.app
 	cp -R build/Snapper.app /Applications/Snapper.app
 	@echo "Installed /Applications/Snapper.app"
+
+## Package the built bundle into a DMG with the install window
+## (background, app icon and Applications drop target)
+dmg: app
+	Scripts/build-dmg.sh
 
 clean:
 	swift package clean

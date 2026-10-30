@@ -21,6 +21,7 @@ Requirements: macOS 14+, Swift 6 toolchain.
 | `make run` | **Build** and launch the bundle |
 | `make open` | Launch the already-built bundle **without rebuilding** |
 | `make install` | Build and copy to `/Applications/Snapper.app` |
+| `make dmg` | Build `build/Snapper-macOS.dmg` with the install window |
 | `make run-raw` | Run the raw executable (capture won't work reliably — see below) |
 | `Snapper --diagnose` | Headless capture self-check for the exact binary |
 
@@ -47,13 +48,16 @@ executable has a different identity and your grant won't apply to it.
 
 - Create a feature branch from `main` (`git checkout -b feature/my-change`)
 - Keep changes focused; one concern per pull request
-- Verify with `swift build -c release` at minimum, plus `make app` if you
-  touched packaging; exercise the editor manually (`Take Screenshot` → select →
-  annotate → copy/save)
+- Verify with `swift build -c release` at minimum, plus `make app` (and
+  `make dmg` if you touched packaging); exercise the editor manually
+  (`Take Screenshot` → select → annotate → copy/save)
 - Code style: match the surrounding code — concise `//` comments, `MARK:`
   sections, SwiftUI state lives in the session object (`UI/SnapperSession.swift`),
   coordinates are top-left-origin points mapped to pixels by `pixelScale`
 - Open a PR against `main` with a short description and how you tested
+- Merging to `main` tags the next patch version (`vX.Y.Z`) and publishes a
+  GitHub release with both DMGs automatically; tag `vX.Y.Z` by hand to ship a
+  different version (for example a minor bump)
 
 ## Reporting issues
 
