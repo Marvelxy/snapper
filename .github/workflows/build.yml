@@ -60,7 +60,7 @@ jobs:
             label: Apple-Silicon
           - arch: x86_64
             label: Intel
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Check out
         uses: actions/checkout@v4
